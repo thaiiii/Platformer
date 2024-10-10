@@ -1,13 +1,22 @@
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.TerrainTools;
 
+#endif
 using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
     public Transform target;
-    Vector3 offset = new Vector3(0,0,-10);
+    public Vector3 offset = new Vector3(0,0,-10);
     [Range(1, 10)]
     public float smoothFactor;
-    public Vector3 minValues, maxValues;
+    [HideInInspector] public Vector3 minValues, maxValues;
+
+    //Editors Fields
+    [HideInInspector] public bool setupComplete = false;
+    public enum SetupState { None, Step1, Step2 };
+    [HideInInspector] public SetupState ss = SetupState.None;
 
     private void FixedUpdate()
     {
@@ -26,4 +35,159 @@ public class CameraFollow : MonoBehaviour
         Vector3 smoothPosition = Vector3.Lerp(transform.position, boundPosition, smoothFactor*Time.fixedDeltaTime);
         transform.position = smoothPosition;
     }
+
+    public void ResetValues()
+    {
+        setupComplete = false;
+        minValues = new Vector3(0,0, -10);
+        maxValues = new Vector3(0,0,-10);
+        ss = SetupState.None;   
+    }
+
 }
+
+#if UNITY_EDITOR
+[CustomEditor(typeof(CameraFollow))]
+public class CameraFollowEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        DrawDefaultInspector(); 
+
+        //Assign the MonoBehaviour target scripts
+        var script = (CameraFollow) target;
+
+        //Check if values are set up or not
+
+        //Blank space
+        GUILayout.Space(20);
+
+        GUIStyle titleStyle = new GUIStyle();
+        titleStyle.fontStyle = FontStyle.Bold;
+        titleStyle.fontSize = 15;
+        titleStyle.alignment = TextAnchor.MiddleCenter;
+
+        GUIStyle defaultStyle = new GUIStyle();
+        defaultStyle.fontSize = 12;
+        defaultStyle.alignment = TextAnchor.MiddleCenter;
+
+        GUILayout.Label("-=- Camera Boundaries Settings -=-", titleStyle);
+
+
+        //If they are stup display the Min and Max values along preview button
+        //Also have a reset button for the values
+        if (script.setupComplete) 
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Minimum Values: ", defaultStyle);
+            GUILayout.Label("Maximum Values: ", defaultStyle);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"X = {script.minValues.x}", defaultStyle);
+            GUILayout.Label($"X = {script.maxValues.x}", defaultStyle);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Y = {script.minValues.y}", defaultStyle);
+            GUILayout.Label($"Y = {script.maxValues.y}", defaultStyle);
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if(GUILayout.Button("View Minimum"))
+            {
+                //Snap camera to the minimum
+                Camera.main.transform.position = script.minValues;
+                Debug.Log(script.minValues);
+            }
+            if (GUILayout.Button("View Maximum"))
+            {
+                //Snap camera to the maximum
+
+                Camera.main.transform.position = script.maxValues;
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Focus On Target"))
+            {
+                Vector3 targetPos = script.target.position;
+                targetPos.z = script.minValues.z;
+                Camera.main.transform.position = targetPos;
+            }
+            GUILayout.EndHorizontal();
+
+            //reset the view to the target
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Reset camera Values"))
+            {
+                //reset the setup complete boolean
+                //reset min max vector3 values
+                script.ResetValues();
+            }
+            GUILayout.EndHorizontal();
+
+            //min values        max values
+            //x=345             x=32 
+            //y=-20             y=205
+            //[View Minimmum]   [View Maximum]
+            //[         Focus on target     ]
+            //[         Reset values        ]  
+        }
+        //If they are not setup display a start setup button
+        else
+        {
+            //Step 0: Show the start wizard button
+            if (script.ss == CameraFollow.SetupState.None)
+            {
+                if (GUILayout.Button("Start setting camera Values"))
+                {
+                    //Change to step 1
+                    script.ss = CameraFollow.SetupState.Step1;
+                }
+            }
+            //Set 1: setup the bottom left boundary (min values)
+            else if (script.ss == CameraFollow.SetupState.Step1)
+            {
+                //Instruction on what to do
+                GUILayout.Label($"1- select your main camera", defaultStyle);
+                GUILayout.Label($"2- Move it to the bottom left bound limit of your level", defaultStyle);
+                GUILayout.Label($"3- Click the 'Set Minimum values' Button", defaultStyle);
+                //button to set the mn values
+                if(GUILayout.Button("Set Minimim Values"))
+                {
+                    //Set min value of the camera limit
+                     script.minValues = Camera.main.transform.position + script.offset;
+                    //change to step 2
+                    script.ss = CameraFollow.SetupState.Step2;
+                }
+                 
+            }
+
+            //Step 2: setup the top right boundary (max values)
+            else if (script.ss == CameraFollow.SetupState.Step2)
+            {
+                //Instruction on what to do
+                GUILayout.Label($"1- select your main camera", defaultStyle);
+                GUILayout.Label($"2- Move it to the top right bound limit of your level", defaultStyle);
+                GUILayout.Label($"3- Click the 'Set Maximim values' Button", defaultStyle);
+                //button to set the mn values
+                if (GUILayout.Button("Set maximum Values"))
+                {
+                    //Set max value of the camera limit
+                    script.maxValues = Camera.main.transform.position + script.offset;
+                    //Enable the setupcomplete boolean
+                    script.setupComplete = true;
+                    //reset view to player
+                    Vector3 targetPos = script.target.position;
+                    targetPos.z = script.minValues.z;
+                    Camera.main.transform.position = targetPos;
+                }
+
+            }
+            //Last thing disable the setupcomplete values
+
+        }
+    }
+}
+#endif

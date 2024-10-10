@@ -6,17 +6,24 @@ using UnityEngine.Scripting.APIUpdating;
 
 public class Fox : MonoBehaviour
 {
+    Rigidbody2D rb;
+    Animator animator;
+    const float groundCheckRadius = 0.01f;
+    const float overheadCheckRadius = 0.01f;
+    const float wallCheckRadius = 0.01f;
+    public bool isDead = false;
+    bool isCrouchPressed;
+    bool isRunning;
+    float speed = 200f;
+    float horizontalValue;
+
     [Header("Ground & Header")]
     [SerializeField] LayerMask groundLayer;
     [SerializeField] Transform groundCheckCollider;
     [SerializeField] Transform overheadCheckCollider;
     [SerializeField] Collider2D standingCollider;
+    [SerializeField] Collider2D crouchingCollider;
     [SerializeField] bool isGrounded;
-
-    Rigidbody2D rb;
-    Animator animator;
-    const float groundCheckRadius = 0.01f;
-    const float overheadCheckRadius = 0.01f;
 
     [Header("Jump & Crounch")]
     [SerializeField] float speedModifier = 1f;
@@ -26,11 +33,13 @@ public class Fox : MonoBehaviour
     [SerializeField] int totalJumps;
     [SerializeField] int availableJumps;
 
-    bool isCrouchPressed;
-    bool isRunning;
-    float speed = 300f;
-    float horizontalValue;
+    [Header("Wall")]
+    [SerializeField] LayerMask wallLayer;
+    [SerializeField] Transform wallCheckCollider;
+    [SerializeField] float slideFactor = 0.1f;
+    //[SerializeField] bool isSliding = false;
 
+    
 
     // Start is called before the first frame update
     void Awake()
@@ -42,6 +51,10 @@ public class Fox : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        //Check if player can move
+        if (!CanControl())
+            return;
+
         horizontalValue = Input.GetAxisRaw("Horizontal");
         if(Input.GetKeyDown(KeyCode.LeftShift))
             isRunning = true;
@@ -63,6 +76,9 @@ public class Fox : MonoBehaviour
 
         //Set the bool yVelocity of animator to Rb.velocity.y
         animator.SetFloat("yVelocity", rb.velocity.y);
+
+        //Check if touching a wall
+        WallCheck();
     }
 
     private void FixedUpdate()
@@ -73,15 +89,18 @@ public class Fox : MonoBehaviour
 
     void GroundCheck()
     {
+        bool wasGrounded = isGrounded;
         Collider2D[] collider = Physics2D.OverlapCircleAll(groundCheckCollider.position, groundCheckRadius, groundLayer);
         if (collider.Length > 0)
         {
             //Only reset jump IF you dont jump (press Jump)
-            if(isJumped==false)
+            if (isJumped == false)
                 availableJumps = totalJumps;
             isGrounded = true;
             isJumped = false;
             coyoteJump = true;
+            if (!wasGrounded && animator.GetFloat("yVelocity") < -4.8f)
+                AudioManager.instance.PlaySFX("landing");
         } else
         {
             isGrounded = false;
@@ -139,6 +158,10 @@ public class Fox : MonoBehaviour
             //  + reduce speed
             //  + disable standing collider
             standingCollider.enabled = !isCrouched;
+            crouchingCollider.enabled = isCrouched;
+
+            //standingCollider.offset = new Vector2(-0.01563479f, -0.06867006f);
+            //((BoxCollider2D)standingCollider).size = new Vector2(0.18f, 0.18f);
         }
         else
         {
@@ -170,16 +193,71 @@ public class Fox : MonoBehaviour
         #endregion
     }
 
+    void WallCheck()
+    {
+        //If wwe are touching a wall and moving toward wall and falling
+        //Slide on the wall
+        if (Physics2D.OverlapCircle(wallCheckCollider.position, wallCheckRadius, wallLayer) 
+            && Mathf.Abs(horizontalValue) > 0
+            && rb.velocity.y < 0
+            && !isGrounded)
+        {
+            //isSliding = true;
+            Vector2 velocity = rb.velocity;
+            velocity.y = -slideFactor;
+            rb.velocity = velocity;
+
+            //Jumping
+            availableJumps = 1;
+            if (Input.GetButtonDown("Jump"))
+            {
+                if (coyoteJump && !Physics2D.OverlapCircle(overheadCheckCollider.position, overheadCheckRadius, groundLayer))
+                {       
+                    Jump();
+                    //isSliding = false;
+                }
+            }
+        } else
+        {
+            //isSliding = false;
+        }
+
+    }
+
+
+    public void Die()
+    {
+        isDead = true;
+        FindObjectOfType<LevelManager>().Restart();
+    }
+
+    public void ResetPlayer()
+    {
+        horizontalValue = 0f;
+    }
+
+    bool CanControl()
+    {
+        // Nếu đang xem xét vật thể thì không thể di chuyển
+        if (FindObjectOfType<InteractionSystem>().isExamining)
+            return false;
+        if(FindObjectOfType<InventorySystem>().isOpen)
+            return false;
+        if (isDead)
+            return false;
+        return true;
+    }
+    
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
         Gizmos.DrawSphere(groundCheckCollider.position, groundCheckRadius);
         Gizmos.color = Color.green;
         Gizmos.DrawSphere(overheadCheckCollider.position, overheadCheckRadius);
-
+        Gizmos.color = Color.red;
+        Gizmos.DrawSphere(wallCheckCollider.position, wallCheckRadius);
 
     }
-
 
 
 
