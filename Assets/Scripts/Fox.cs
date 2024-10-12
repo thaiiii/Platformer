@@ -6,6 +6,8 @@ using UnityEngine.Scripting.APIUpdating;
 
 public class Fox : MonoBehaviour
 {
+    public static event Action HasLanded;
+
     Rigidbody2D rb;
     Animator animator;
     const float groundCheckRadius = 0.01f;
@@ -99,10 +101,25 @@ public class Fox : MonoBehaviour
             isGrounded = true;
             isJumped = false;
             coyoteJump = true;
+
+            //Trigger the HasLanded 
+            if(!wasGrounded)
+                HasLanded?.Invoke();
             if (!wasGrounded && animator.GetFloat("yVelocity") < -4.8f)
                 AudioManager.instance.PlaySFX("landing");
+
+            //Check if ground has a tag moving platform
+            foreach(var c in collider)
+            {
+                if(c.tag == "MovingPlatform") 
+                    transform.parent = c.transform;
+            }
+
         } else
         {
+            //Un-parent the transform
+            transform.parent = null;   
+
             isGrounded = false;
             isJumped=true;
             if (animator.GetFloat("yVelocity") < 0 && availableJumps == totalJumps)

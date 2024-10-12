@@ -21,5 +21,6 @@ public class LevelManager : MonoBehaviour
         FindObjectOfType<Fox>().isDead = false;
         FindObjectOfType<Fox>().transform.position = playerInitPosition;
         FindObjectOfType<LifeCount>().ResetLifeCount();
+        FindObjectOfType<SuperMarioCameraFollow>().Follow();
     }
 }

@@ -6,10 +6,12 @@ using UnityEngine.Events;
 [RequireComponent(typeof(BoxCollider2D))]
 public class Item : MonoBehaviour
 {
-    public enum InteractionType { NONE, PickUp, Examine}
+    public enum InteractionType { NONE, PickUp, Examine, GrabDrop}
     public enum ItemType { Static, Consumable};
     public InteractionType interactionType;
     public ItemType itemType;
+    public bool stackable = false;
+ 
     [Header("Examine")]
     public string descriptionText;
 
@@ -27,6 +29,8 @@ public class Item : MonoBehaviour
         switch(interactionType)
         {
             case InteractionType.PickUp:
+                if (!FindObjectOfType<InventorySystem>().CanPickUp())
+                    return;
                 //Add to pickup list and DISABLE it
                 FindObjectOfType<InventorySystem>().PickUp(gameObject);
                 gameObject.SetActive(false);
@@ -34,6 +38,10 @@ public class Item : MonoBehaviour
             case InteractionType.Examine:
                 //Call the Examine item in the interaction system
                 FindObjectOfType<InteractionSystem>().ExamineItem(this);
+                break;
+            case InteractionType.GrabDrop:
+                //Grab interaction 
+                FindObjectOfType<InteractionSystem>().GrabDrop();
                 break;
             default:
                 Debug.Log("NULL ITEM");

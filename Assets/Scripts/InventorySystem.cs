@@ -7,8 +7,24 @@ using UnityEngine.UI;
 
 public class InventorySystem : MonoBehaviour
 {
+    [System.Serializable]
+    //Inventory Item class
+    public class InventoryItem
+    {
+        public GameObject obj;
+        public int stack = 1;
+
+        public InventoryItem(GameObject obj, int stack = 1)
+        {
+            this.obj = obj; 
+            this.stack = stack;
+        }
+    }
+
+
+
     //List of items picked up
-    public List<GameObject> items = new List<GameObject>();
+    public List<InventoryItem> items = new List<InventoryItem>();
     public bool isOpen;
     //Inventory window
     [Header("UI Items Section")]
@@ -39,10 +55,42 @@ public class InventorySystem : MonoBehaviour
         Update_UI();
     }
 
+    //Pick an item
     public void PickUp(GameObject item)
     {
-        items.Add(item);
+        if(item.GetComponent<Item>().stackable)
+        {
+            //Check if we have an existing item in out inventory, if yes, stack it
+            InventoryItem existingItem = items.Find(x => x.obj.name==item.name);
+            if(existingItem != null)
+            {
+                existingItem.stack++;
+            }
+            else
+            {
+                InventoryItem i = new InventoryItem(item);
+                items.Add(i);
+            }
+        }
+        else
+        {
+            InventoryItem i = new InventoryItem(item);
+            items.Add(i);
+        }
+
         Update_UI();
+    }
+
+    public bool CanPickUp()
+    {
+        if(items.Count >= items_Images.Length)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
     }
 
     void Update_UI()
@@ -52,7 +100,7 @@ public class InventorySystem : MonoBehaviour
         //show it in the respective slot in the items_images
         for (int i = 0; i < items.Count; i++)
         {
-            items_Images[i].sprite = items[i].GetComponent<SpriteRenderer>().sprite;
+            items_Images[i].sprite = items[i].obj.GetComponent<SpriteRenderer>().sprite;
             items_Images[i].gameObject.SetActive(true);
             
         }
@@ -71,8 +119,13 @@ public class InventorySystem : MonoBehaviour
     public void ShowDescription(int id)
     {
         description_Images.sprite = items_Images[id].sprite;
-        description_Title.text = items[id].GetComponent<Item>().name;
-        description_Text.text = items[id].GetComponent<Item>().descriptionText;
+        //If stack == 1 write only name
+        if (items[id].stack == 1)
+            description_Title.text = items[id].obj.name;
+        else if (items[id].stack > 1)
+            description_Title.text = items[id].obj.name + " x" + items[id].stack;
+        description_Text.text = items[id].obj.GetComponent<Item>().descriptionText;
+        
         //Show 2 above info
         description_Images.gameObject.SetActive(true);
         description_Title.gameObject.SetActive(true);
@@ -88,14 +141,19 @@ public class InventorySystem : MonoBehaviour
 
     public void Consume(int id)
     {
-        if (items[id].GetComponent<Item>().itemType == Item.ItemType.Consumable)
+        if (items[id].obj.GetComponent<Item>().itemType == Item.ItemType.Consumable)
         {
-            Debug.Log($"Consumed {items[id].name}");
+            Debug.Log($"Consumed {items[id].obj.name}");
             //Invoke the consumeEvent
-            items[id].GetComponent<Item>().consumeEvent.Invoke();
-            //Destroy the item then clear it form the list
-            Destroy(items[id], 0.1f);
-            items.RemoveAt(id);
+            items[id].obj.GetComponent<Item>().consumeEvent.Invoke();
+            //reduce stack number
+            items[id].stack--;
+            if(items[id].stack == 0)
+            {
+                //Destroy the item then clear it form the list
+                Destroy(items[id].obj, 0.1f);
+                items.RemoveAt(id);
+            }
             Update_UI();
         }
 

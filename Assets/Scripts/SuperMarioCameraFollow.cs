@@ -1,97 +1,73 @@
 #if UNITY_EDITOR
-using System.Security.Cryptography;
 using UnityEditor;
 using UnityEditor.TerrainTools;
 
 #endif
 using UnityEngine;
 
-public class CameraFollow : MonoBehaviour
+public class SuperMarioCameraFollow : MonoBehaviour
 {
     public Transform target;
-    public Vector3 offset = new Vector3(0,0,-10);
+    public Vector3 offset = new Vector3(0, 0, -10);
     [Range(1, 10)]
     public float smoothFactor;
-    public bool followFloor = false;
-    public float goalAltitude = 0;
     [HideInInspector] public Vector3 minValues, maxValues;
+    [Range(0, 1)]
+    public float moveCameraTriggerValue;
 
     //Editors Fields
     [HideInInspector] public bool setupComplete = false;
     public enum SetupState { None, Step1, Step2 };
     [HideInInspector] public SetupState ss = SetupState.None;
 
-
-    private void Start()
-    {
-        if(followFloor)
-        {
-            goalAltitude = target.position.y;
-        }
-    }
-
-    public void OnEnable()
-    {
-        Fox.HasLanded += UpdateCameraAltitude;
-    }
-
-    public void OnDisable()
-    {
-        Fox.HasLanded -= UpdateCameraAltitude;  
-    }
-
-    void UpdateCameraAltitude()
-    {
-        if (!followFloor)
-            return;
-        goalAltitude = target.position.y; 
-
-    }
-
     private void FixedUpdate()
     {
-        Follow(); 
+        var playerViewportPos = Camera.main.WorldToViewportPoint(target.transform.position);
+        if (playerViewportPos.x >= moveCameraTriggerValue)
+        {
+
+            Follow();
+        }
+        
+        
+
     }
 
-    void Follow()
+    public void Follow()
     {
         Vector3 targetPosition = target.position + offset;
-
-        //If follow floor modify the y value accordingly
-        if (followFloor)
-            targetPosition.y = goalAltitude + offset.y; 
-
-        
         //Check if target position is out of bound or not
         //Limit it in the visible range
         Vector3 boundPosition = new Vector3(
             Mathf.Clamp(targetPosition.x, minValues.x, maxValues.x),
             Mathf.Clamp(targetPosition.y, minValues.y, maxValues.y),
             Mathf.Clamp(targetPosition.z, minValues.z, maxValues.z));
-        Vector3 smoothPosition = Vector3.Lerp(transform.position, boundPosition, smoothFactor*Time.fixedDeltaTime);
+        Vector3 smoothPosition = Vector3.Lerp(transform.position, boundPosition, smoothFactor * Time.fixedDeltaTime);
         transform.position = smoothPosition;
+
+        minValues.x = smoothPosition.x;
     }
 
     public void ResetValues()
     {
         setupComplete = false;
-        minValues = new Vector3(0,0, -10);
-        maxValues = new Vector3(0,0,-10);
-        ss = SetupState.None;   
+        minValues = new Vector3(0, 0, -10);
+        maxValues = new Vector3(0, 0, -10);
+        ss = SetupState.None;
     }
 
 }
 
 #if UNITY_EDITOR
-[CustomEditor(typeof(CameraFollow))]
-public class CameraFollowEditor : Editor
+[CustomEditor(typeof(SuperMarioCameraFollow))]
+public class SuperMarioCameraFollowEditor : Editor
 {
     public override void OnInspectorGUI()
     {
-        DrawDefaultInspector(); 
+        DrawDefaultInspector();
 
         //Assign the MonoBehaviour target scripts
-        var script = (CameraFollow) target;
+        var script = (SuperMarioCameraFollow)target;
 
         //Check if values are set up or not
 
@@ -112,7 +88,7 @@ public class CameraFollowEditor : Editor
 
         //If they are stup display the Min and Max values along preview button
         //Also have a reset button for the values
-        if (script.setupComplete) 
+        if (script.setupComplete)
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label("Minimum Values: ", defaultStyle);
@@ -130,7 +106,7 @@ public class CameraFollowEditor : Editor
             GUILayout.EndHorizontal();
 
             GUILayout.BeginHorizontal();
-            if(GUILayout.Button("View Minimum"))
+            if (GUILayout.Button("View Minimum"))
             {
                 //Snap camera to the minimum
                 Camera.main.transform.position = script.minValues;
@@ -174,34 +150,34 @@ public class CameraFollowEditor : Editor
         else
         {
             //Step 0: Show the start wizard button
-            if (script.ss == CameraFollow.SetupState.None)
+            if (script.ss == SuperMarioCameraFollow.SetupState.None)
             {
                 if (GUILayout.Button("Start setting camera Values"))
                 {
                     //Change to step 1
-                    script.ss = CameraFollow.SetupState.Step1;
+                    script.ss = SuperMarioCameraFollow.SetupState.Step1;
                 }
             }
             //Set 1: setup the bottom left boundary (min values)
-            else if (script.ss == CameraFollow.SetupState.Step1)
+            else if (script.ss == SuperMarioCameraFollow.SetupState.Step1)
             {
                 //Instruction on what to do
                 GUILayout.Label($"1- select your main camera", defaultStyle);
                 GUILayout.Label($"2- Move it to the bottom left bound limit of your level", defaultStyle);
                 GUILayout.Label($"3- Click the 'Set Minimum values' Button", defaultStyle);
                 //button to set the mn values
-                if(GUILayout.Button("Set Minimim Values"))
+                if (GUILayout.Button("Set Minimim Values"))
                 {
                     //Set min value of the camera limit
-                     script.minValues = Camera.main.transform.position + script.offset;
+                    script.minValues = Camera.main.transform.position + script.offset;
                     //change to step 2
-                    script.ss = CameraFollow.SetupState.Step2;
+                    script.ss = SuperMarioCameraFollow.SetupState.Step2;
                 }
-                 
+
             }
 
             //Step 2: setup the top right boundary (max values)
-            else if (script.ss == CameraFollow.SetupState.Step2)
+            else if (script.ss == SuperMarioCameraFollow.SetupState.Step2)
             {
                 //Instruction on what to do
                 GUILayout.Label($"1- select your main camera", defaultStyle);
