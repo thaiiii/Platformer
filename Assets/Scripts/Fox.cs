@@ -6,6 +6,9 @@ using UnityEngine.Scripting.APIUpdating;
 
 public class Fox : MonoBehaviour
 {
+    public enum InputType { NONE, PC, MOBILE}
+    public InputType inputType;
+
     public static event Action HasLanded;
 
     Rigidbody2D rb;
@@ -15,9 +18,23 @@ public class Fox : MonoBehaviour
     const float wallCheckRadius = 0.01f;
     public bool isDead = false;
     bool isCrouchPressed;
-    bool isRunning;
+    public bool IsCrounchPressed { 
+        get { return isCrouchPressed; }
+        set { isCrouchPressed = value; }}
+
     float speed = 200f;
+    
+    bool isRunning;
+    public bool IsRunning
+    {
+        get { return isRunning; }
+        set { isRunning = value; }}
+
     float horizontalValue;
+    public float HorizontalValue { 
+        get { return horizontalValue; }
+        set { horizontalValue = value; } }
+    
 
     [Header("Ground & Header")]
     [SerializeField] LayerMask groundLayer;
@@ -53,12 +70,20 @@ public class Fox : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (inputType == InputType.PC)
+            HandlePCInput();
+        else if (inputType == InputType.MOBILE)
+            HandleMobileInput();
+    }
+
+    private void HandlePCInput()
+    {
         //Check if player can move
         if (!CanControl())
             return;
 
         horizontalValue = Input.GetAxisRaw("Horizontal");
-        if(Input.GetKeyDown(KeyCode.LeftShift))
+        if (Input.GetKeyDown(KeyCode.LeftShift))
             isRunning = true;
         if (Input.GetKeyUp(KeyCode.LeftShift))
             isRunning = false;
@@ -67,14 +92,14 @@ public class Fox : MonoBehaviour
         if (Input.GetButtonDown("Jump"))
         {
             if (coyoteJump && !Physics2D.OverlapCircle(overheadCheckCollider.position, overheadCheckRadius, groundLayer))
-                Jump();  
+                Jump();
         }
 
         //if press Crouch button, enable bool crouch, othwewise turn it off
         if (Input.GetButtonDown("Crouch"))
             isCrouchPressed = true;
         else if (Input.GetButtonUp("Crouch"))
-            isCrouchPressed= false;
+            isCrouchPressed = false;
 
         //Set the bool yVelocity of animator to Rb.velocity.y
         animator.SetFloat("yVelocity", rb.velocity.y);
@@ -82,6 +107,20 @@ public class Fox : MonoBehaviour
         //Check if touching a wall
         WallCheck();
     }
+
+    private void HandleMobileInput()
+    {
+        //Check if player can move
+        if (!CanControl())
+            return;
+
+        //Set the bool yVelocity of animator to Rb.velocity.y
+        animator.SetFloat("yVelocity", rb.velocity.y);
+
+        //Check if touching a wall
+        WallCheck();
+    }
+
 
     private void FixedUpdate()
     {
@@ -138,7 +177,7 @@ public class Fox : MonoBehaviour
         coyoteJump = false;
     }
 
-    void Jump()
+    public void Jump()
     {
         //if the player is grounded and not crouching, pressed Jump
         if (!isCrouchPressed && availableJumps > 0)
@@ -226,14 +265,18 @@ public class Fox : MonoBehaviour
 
             //Jumping
             availableJumps = 1;
-            if (Input.GetButtonDown("Jump"))
+            if(inputType == InputType.PC)
             {
-                if (coyoteJump && !Physics2D.OverlapCircle(overheadCheckCollider.position, overheadCheckRadius, groundLayer))
-                {       
-                    Jump();
-                    //isSliding = false;
+                if (Input.GetButtonDown("Jump"))
+                {
+                    if (coyoteJump && !Physics2D.OverlapCircle(overheadCheckCollider.position, overheadCheckRadius, groundLayer))
+                    {
+                        Jump();
+                        //isSliding = false;
+                    }
                 }
             }
+            
         } else
         {
             //isSliding = false;

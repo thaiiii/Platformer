@@ -83,7 +83,7 @@ public class Dialogue : MonoBehaviour
     //Writing logic
     IEnumerator Writing()
     {
-        yield return new WaitForSeconds(writingSpeed);
+        //yield return new WaitForSeconds(writingSpeed);
 
         string currentDialogue = dialogues[index];
         //Write the character
